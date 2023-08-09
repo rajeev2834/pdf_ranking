@@ -1,0 +1,30 @@
+version: '3.9'
+
+volumes:
+  postgres_data_dev: {}
+  postgres_backup_dev: {}
+  redisdata: {}
+
+services:
+  postgres:
+    image: postgres
+    env_file: ./.env
+    restart: always
+    volumes:
+      - postgres_data_dev:/var/lib/postgresql/data
+      - postgres_backup_dev:/backups
+
+  django:
+    init: true
+    build:
+      context: .
+      dockerfile: ./docker/django/Dockerfile
+    depends_on:
+      - postgres
+    env_file: ./.env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../pdf_ranking:/app
+
+    restart: always
