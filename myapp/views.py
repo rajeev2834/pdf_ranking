@@ -1,13 +1,17 @@
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.viewsets import ModelViewSet, GenericViewSet
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.mixins import CreateModelMixin, ListModelMixin
 from io import BytesIO
 
-from .models import  FileData
-from .serializers import  FileDataSerializer, FileDataCreateSerializer
+from django.db.models import F
+from rest_framework import status
+from rest_framework.mixins import CreateModelMixin, ListModelMixin
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.viewsets import GenericViewSet, ModelViewSet
+
+from .models import FileData
 from .pdf_parser import parse_pdf
+from .serializers import (FileDataCreateSerializer, FileDataSerializer,
+                          FileScoreSerializer)
 
 
 class FileDataViewSet(CreateModelMixin, ListModelMixin, GenericViewSet):
@@ -87,5 +91,39 @@ class FileDataViewSet(CreateModelMixin, ListModelMixin, GenericViewSet):
                 return Response({'error': "pdf parsing failed"}, status=status.HTTP_400_BAD_REQUEST)
         
 
+class FileScoreListView(APIView):
+
+    #permission_classes = [IsAdminUser]
+    
+    def get_score_field(self):
+        # Get the score field name from the URL String
+        return self.kwargs.get('score_field')
+    
+    def get(self, request, *args, **kwargs):
+        # Get the score field name from the URL parameter
+        score_field = self.get_score_field()
+        
+        # Get the queryset of the model
+        #queryset = FileData.objects.all()
+
+        # Annotate the queryset with the dynamic score field
+        annotated_queryset = FileData.objects.annotate(
+            dynamic_score=F(score_field)
+        )
+        
+        # Order the queryset by the dynamic score field in descending order
+        sorted_queryset = annotated_queryset.order_by('-dynamic_score')
+        
+        # Get the serializer class
+        serializer_class = FileScoreSerializer
+        
+        # Get the serializer context
+        context = {'score_field': score_field, 'request': request}
+        
+        # Get the serializer with the queryset, context and many=True
+        serializer = serializer_class(sorted_queryset, context=context, many=True)
+        
+        # Return the response with the serialized data
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 # Create your views here.

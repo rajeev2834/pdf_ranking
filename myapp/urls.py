@@ -1,8 +1,12 @@
 from django.urls import path
 from rest_framework_nested import routers
-from . import views
+from .views import FileDataViewSet, FileScoreListView
 
 router = routers.DefaultRouter()
-router.register(r'files', views.FileDataViewSet, basename='files')
+router.register(r'files', FileDataViewSet, basename='files')
 
-urlpatterns = router.urls
+urlpatterns = [
+    path('score/<str:score_field>/', FileScoreListView.as_view(), name='file-score-list'),
+]
+
+urlpatterns += router.urls
